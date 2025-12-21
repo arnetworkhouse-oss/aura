@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Aura: Particle Engine</title>
-    <link rel="icon" href="https://raw.githubusercontent.com/arnetworkhouse-oss/aura/main/aura%20logo.png"
-        type="image/png">
+    <link rel="icon" href="https://raw.githubusercontent.com/arnetworkhouse-oss/aura/main/aura%20logo.png" type="image/png">
 
     <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
@@ -19,13 +18,12 @@
         #video-container { transform: scaleX(-1); border-radius: 12px; overflow: hidden; width: 120px; height: 90px; border: 2px solid rgba(255,255,255,0.05); }
         input[type=range] { accent-color: #ffffff; cursor: pointer; height: 12px; }
         .loading-screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #000; z-index: 100; transition: opacity 0.8s; }
-        .label-text { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.6; margin-bottom: 4px; display: flex; justify-content: space-between; }
+        .label-text { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; display: flex; justify-content: space-between; opacity: 0.6; }
         
-        /* Mobile Menu Transitions */
         #controls-panel { transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
         @media (max-width: 768px) {
             #controls-panel { transform: translateX(-100%); position: fixed; top: 0; left: 0; height: 100%; width: 85%; max-width: 320px; z-index: 50; overflow-y: auto; }
-            #controls-panel.open { transform: translateX(0); }
+            #controls-panel.open { transform: translateX(0); box-shadow: 0 0 0 100vmax rgba(0,0,0,0.5); }
         }
     </style>
 </head>
@@ -123,9 +121,11 @@
     attribute vec3 targetPosition;
     attribute vec3 color;
     varying vec3 vColor;
+    
     vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
     vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
     vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+    
     float snoise(vec3 v) {
         const vec2 C = vec2(1.0/6.0, 1.0/3.0);
         const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
@@ -162,6 +162,7 @@
         vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
         return 42.0 * dot(m*m*m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
     }
+    
     void main() {
         vColor = color;
         vec3 pos = mix(position, targetPosition, uTransition);
@@ -185,9 +186,8 @@
 </script>
 
 <script>
-/** * GLOBALS & MOBILE ADAPTATION
- */
-const PARTICLE_COUNT = 15000; // Reduced slightly for mobile performance
+/** * GLOBALS & MOBILE ADAPTATION */
+const PARTICLE_COUNT = 15000;
 let scene, camera, renderer, particles, material;
 let video, hands, cameraUtils, canvasCtx;
 
@@ -200,14 +200,27 @@ let state = {
 
 const shapes = {};
 
-// Mobile Menu Logic
+// Mobile Menu Logic with Auto-Collapse
 const menuToggle = document.getElementById('menu-toggle');
 const panel = document.getElementById('controls-panel');
-menuToggle.addEventListener('click', () => {
+
+menuToggle.addEventListener('click', (e) => {
+    e.stopPropagation();
     panel.classList.toggle('open');
 });
 
-// Procedural Geometry Generator (Unchanged)
+document.addEventListener('click', (e) => {
+    if (panel.classList.contains('open') && !panel.contains(e.target) && !menuToggle.contains(e.target)) {
+        panel.classList.remove('open');
+    }
+});
+
+document.addEventListener('touchstart', (e) => {
+    if (panel.classList.contains('open') && !panel.contains(e.target) && !menuToggle.contains(e.target)) {
+        panel.classList.remove('open');
+    }
+}, { passive: true });
+
 function createGeometries() {
     const data = { heart: new Float32Array(PARTICLE_COUNT * 3), saturn: new Float32Array(PARTICLE_COUNT * 3), buddha: new Float32Array(PARTICLE_COUNT * 3), flower: new Float32Array(PARTICLE_COUNT * 3), sphere: new Float32Array(PARTICLE_COUNT * 3), burst: new Float32Array(PARTICLE_COUNT * 3) };
     for (let i = 0; i < PARTICLE_COUNT; i++) {
@@ -272,7 +285,6 @@ function init() {
     particles = new THREE.Points(geometry, material);
     scene.add(particles);
 
-    // Mobile Resize & Touch Fallback
     window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
@@ -342,19 +354,22 @@ function initTracking() {
         document.getElementById('loading').style.opacity = '0';
         setTimeout(() => document.getElementById('loading').remove(), 800);
     }).catch(() => {
-        // Fallback if camera is denied
         document.getElementById('loading').style.opacity = '0';
         setTimeout(() => document.getElementById('loading').remove(), 800);
     });
 }
 
-// UI Callbacks (Unchanged)
+// Fixed Shape Reset Logic
 function setShape(type) {
     state.shape = type;
     const target = particles.geometry.getAttribute('targetPosition');
     target.array.set(shapes[type]);
     target.needsUpdate = true;
+    
+    // Reset transition so morph animation triggers
     state.transition = 0;
+    material.uniforms.uTransition.value = 0;
+    
     document.querySelectorAll('#shape-selector button').forEach(b => b.classList.toggle('active-btn', b.dataset.shape === type));
     if(window.innerWidth < 768) panel.classList.remove('open');
 }
@@ -391,7 +406,12 @@ function captureScreenshot() {
 function animate(time) {
     requestAnimationFrame(animate);
     material.uniforms.uTime.value = time * 0.001;
-    if (state.transition < 1.0) state.transition += 0.02;
+    
+    // Smoothly increment transition
+    if (state.transition < 1.0) {
+        state.transition = Math.min(1.0, state.transition + 0.02);
+    }
+    
     material.uniforms.uTransition.value = state.transition;
     material.uniforms.uSpread.value = THREE.MathUtils.lerp(material.uniforms.uSpread.value, state.spread, 0.1);
     material.uniforms.uPointSize.value = state.size + (state.isPinching ? 1.5 : 0);
