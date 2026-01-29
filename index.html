@@ -25,6 +25,19 @@
             #controls-panel { transform: translateX(-100%); position: fixed; top: 0; left: 0; height: 100%; width: 85%; max-width: 320px; z-index: 50; overflow-y: auto; }
             #controls-panel.open { transform: translateX(0); box-shadow: 0 0 0 100vmax rgba(0,0,0,0.5); }
         }
+            .global-footer {
+                position: fixed;
+                text-align: center;
+                bottom: 12px;
+            left: 50%;  
+            transform: translateX(-50%);
+            z-index: 40;
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(10px);
+            padding: 8px 16px;
+            border-radius: 999px;
+}
+
     </style>
 </head>
 <body>
@@ -36,6 +49,7 @@
             <div class="absolute inset-0 bg-white animate-[slide_2s_infinite]"></div>
         </div>
         <p class="mt-6 text-[10px] tracking-widest text-gray-500 uppercase">Optimizing for Mobile GPU</p>
+        <p class="mt-6 text-[10px] tracking-widest text-gray-500 uppercase">Made By AR Network House</p>
     </div>
 </div>
 
@@ -109,7 +123,9 @@
             • <b class="text-white">Sensors:</b> Tilt device to shift light
         </p>
     </div>
+    
 </div>
+
 
 <script id="vertexShader" type="x-shader/x-vertex">
     uniform float uTime;
@@ -410,5 +426,15 @@ function animate(time) {
 init();
 animate();
 </script>
+<footer class="global-footer">
+  <p>
+    Game maintained by 
+    <a href="https://arnetworkhouse.in/" target="_blank">AR NETWORK HOUSE</a>
+  </p>
+  <p>
+    | <a href="https://arnetworkhouse-oss.github.io/ar-network-house/more.html" target="_blank">MORE GAMES</a> |
+    <a href="https://arnetworkhouse-oss.github.io/ar-network-house/feedback_game.html" target="_blank">RATE US</a> |
+  </p>
+</footer>
 </body>
 </html>
